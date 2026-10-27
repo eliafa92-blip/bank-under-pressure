@@ -164,3 +164,35 @@ export function finalFacts() {
     'קיימת אי־ודאות לגבי זמינות ועלות מקורות מימון חדשים בעת לחץ אם צמיחת האשראי תימשך.'
   ];
 }
+
+export type Verdict = 'match' | 'partial' | 'miss';
+export type DebriefStep = 'signals' | 'first' | 'second' | 'roots' | 'causal' | 'cfo' | 'secondary' | 'final';
+
+// Compares each decision with the preferred one, for the post-game debrief only.
+export function debrief(s: GameState): {step: DebriefStep; verdict: Verdict}[] {
+  const path = pathForSignals(s.selectedSignals);
+  const signals: Verdict = path === 'advanced' ? 'match' : path === 'credit' || path === 'funding' ? 'partial' : 'miss';
+
+  let first: Verdict;
+  if (path === 'advanced') first = s.advancedReselected ? 'miss' : 'match';
+  else if (path === 'credit' || path === 'funding') {
+    const keys = (scenario.documents[firstDocId(s) as keyof typeof scenario.documents] as {keyEvidenceIds?: string[]}).keyEvidenceIds ?? [];
+    const found = keys.filter(id => s.evidence.includes(id)).length;
+    first = found === keys.length ? 'match' : found ? 'partial' : 'miss';
+  } else first = s.recoveryChoice === 'credit' || s.recoveryChoice === 'funding' ? 'partial' : 'miss';
+
+  const picked = rootCards.filter(c => s.selectedRoots.includes(c.id));
+  const core = ['credit_growth', 'funding_shift'].every(id => s.selectedRoots.includes(id));
+  const roots: Verdict = core && picked.every(c => c.points > 0) ? 'match' : picked.some(c => c.points > 0) ? 'partial' : 'miss';
+
+  return [
+    {step: 'signals', verdict: signals},
+    {step: 'first', verdict: first},
+    {step: 'second', verdict: s.secondTake === 'balanced' ? 'match' : 'miss'},
+    {step: 'roots', verdict: roots},
+    {step: 'causal', verdict: s.causalChoice === 'balanced' ? 'match' : 'miss'},
+    {step: 'cfo', verdict: s.cfoChoice === 'balanced' ? 'match' : s.cfoChoice === 'dismiss' ? 'partial' : 'miss'},
+    {step: 'secondary', verdict: s.secondaryChoice === 'sector' || s.secondaryChoice === 'margin' ? 'match' : 'miss'},
+    {step: 'final', verdict: s.finalChoice === 'inquiry' ? 'match' : s.finalChoice === 'monitor' || s.finalChoice === 'remediation' ? 'partial' : 'miss'},
+  ];
+}

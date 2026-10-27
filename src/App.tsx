@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, BookOpen, BrainCircuit, Check, ChevronLeft, ClipboardCopy, Compass, FileText, Flag, HelpCircle, Lightbulb, RefreshCcw, Scale, Share2, ShieldCheck, Target, TrendingUp } from 'lucide-react';
 import scenario from './content/scenario.json';
 import config from './content/config.json';
-import { evidenceIndex, finalFacts, firstDocId, initialState, pathForSignals, rootCards, scoreGame, secondDocId, stages, STORE_KEY, validSavedState, withSignals, TIME_LIMIT_MS } from './game/engine';
-import type { CausalChoice, CfoChoice, FinalChoice, GameState, RecoveryChoice, SecondTake, SecondaryChoice, Stage } from './game/types';
+import { debrief, evidenceIndex, finalFacts, firstDocId, initialState, pathForSignals, rootCards, scoreGame, secondDocId, stages, STORE_KEY, validSavedState, withSignals, TIME_LIMIT_MS } from './game/engine';
+import type { DebriefStep, Verdict } from './game/engine';
+import type { CausalChoice, CfoChoice, Path, FinalChoice, GameState, RecoveryChoice, SecondTake, SecondaryChoice, Stage } from './game/types';
 
 const STEP_NAMES: Record<Stage, string> = {
   intro: 'פתיחה', signals: 'תמונת מצב', first: 'חקירה ראשונה', second: 'חקירה מעמיקה', analysis: 'גיבוש הערכה', decision: 'הכרעה פיקוחית', results: 'תוצאות',
@@ -58,6 +59,26 @@ const finalOptions: {value:FinalChoice;title:string;description:string}[] = [
   {value:'remediation',title:'דרישה מיידית לתוכנית תיקון מחייבת',description:'לקבוע כבר כעת כי מבנה המימון מעיד על חולשת ניהול מהותית.'},
   {value:'emergency',title:'התערבות דחופה לעצירת האשראי החדש',description:'להניח כי הבנק ניצב בפני משבר נזילות מיידי.'},
 ];
+
+const VERDICT_LABEL: Record<Verdict, string> = {match:'תואם להכרעה המועדפת', partial:'תואם בחלקו', miss:'שונה מההכרעה המועדפת'};
+const titleOf = <T extends string>(options:{value:T;title:string}[], value:T|null) => options.find(o=>o.value===value)?.title ?? 'לא נבחר';
+
+// What the player actually chose at each step, in the words they saw on screen.
+function debriefChoice(step:DebriefStep, game:GameState, path:Path, secondId:string|null):string {
+  switch (step) {
+    case 'signals': return game.selectedSignals.map(id=>scenario.metrics.find(m=>m.id===id)?.label).join('; ');
+    case 'first':
+      if (path==='advanced') return game.advancedReselected?'הסיכון מנוהל — חזרה לבחירת נתונים':'דבקתי בבחירה הראשונה';
+      if (path==='credit'||path==='funding') return game.evidence.map(id=>evidenceIndex.get(id)?.text).join(' · ')||'לא נבחרו ראיות';
+      return titleOf(recoveryOptions, game.recoveryChoice);
+    case 'second': return titleOf(secondId==='advanced'?advancedTakes:basicTakes, game.secondTake);
+    case 'roots': return rootCards.filter(c=>game.selectedRoots.includes(c.id)).map(c=>c.text).join(' · ')||'לא סומנו כרטיסיות';
+    case 'causal': return titleOf(causalOptions, game.causalChoice);
+    case 'cfo': return titleOf(cfoOptions, game.cfoChoice);
+    case 'secondary': return titleOf(secondaryOptions, game.secondaryChoice);
+    case 'final': return titleOf(finalOptions, game.finalChoice);
+  }
+}
 
 function hydrate():GameState {
   try { const value = localStorage.getItem(STORE_KEY); return value ? validSavedState(JSON.parse(value)) ?? initialState() : initialState(); }
@@ -223,7 +244,15 @@ function App() {
           {l:'החלטה פיקוחית',v:score.supervisory,max:25},
         ].map(row=><div className="score-row" key={row.l}><div><span>{row.l}</span><b dir="ltr">{row.v}/{row.max}</b></div><div className="bar-track"><div style={{width:`${row.v/row.max*100}%`}}/></div></div>)}{score.timePenalty>0&&<p className="muted small">חריגה ממגבלת 20 הדקות: <b dir="ltr">−{score.timePenalty}</b> מהציון הכולל.</p>}</div></div>
         <div className="insight-card"><span className="chapter-label">המפתח המקצועי</span><h2>הסיפור היה בשילוב, לא בנתון בודד.</h2><p>האשראי לציבור גדל מ־100 ל־145 מיליארד ₪, בזמן שהפיקדונות הקמעונאיים ירדו מ־90 ל־80 מיליארד ₪. הפער נתמך יותר באמצעות אג״ח ופיקדונות מגופים פיננסיים. זה עשוי לשנות את רגישות הבנק לעלות ולזמינות המימון, גם כשהנזילות הנוכחית גבוהה.</p><p>נתוני המח״מ, ביקושי ההנפקות, פיזור מחזיקי האג״ח ותוכנית המימון <strong>ממתנים</strong> את עוצמת החשש; הם אינם מוכיחים שהשינוי המבני לא התרחש. התייקרות מקורות ושחיקת מרווחים הן השלכות אפשריות, אך אינן מחליפות את בעיית השורש. ריכוזיות נדל״ן ראויה לבדיקה נפרדת.</p><p><strong>המהלך המועדף במשחק:</strong> בירור פיקוחי ממוקד של תוכנית המימון, תנאי לחץ, מועדי מחזור, יציבות המקורות והתאמתם לקצב האשראי — לא הכרזה מוקדמת על משבר.</p></div>
-        <div className="panel"><h2>איך התקבלה ההחלטה שלך?</h2><div className="review-points"><p><b>מסלול חקירה:</b> {path==='advanced'?'זיהוי שני התחומים כבר בשלב הפתיחה':path==='credit'?'חקירת אשראי':path==='funding'?'חקירת מימון':path==='decoy'?'חקירה שהחלה בנושא משני':'חקירה כללית'}</p><p><b>רמזים בתשלום:</b> {game.hintCount} (הפחתה של {Math.min(10,game.hintCount*5)} נקודות מעצמאות)</p><p><b>העמדה בעקבות מידע חדש:</b> {game.secondTake==='balanced'?'נותרה ממוקדת בקשר אשראי–מימון, תוך שקלול הממתנים':game.secondTake==='resolved'?'הנתונים הממתנים הובילו להפחתת הערכת הסיכון':game.secondTake==='profit'?'המוקד עבר לרווחיות ולמודל העסקי':'הוחמרה להערכת מצוקת נזילות מיידית'}</p><p><b>החלטה סופית:</b> {finalOptions.find(x=>x.value===game.finalChoice)?.title}</p></div></div>
+        <div className="panel debrief"><h2><ClipboardCopy size={19}/> תחקיר ההחלטות שלך</h2>
+          <p className="muted"><b>מסלול חקירה:</b> {path==='advanced'?'זיהוי שני התחומים כבר בשלב הפתיחה':path==='credit'?'חקירת אשראי':path==='funding'?'חקירת מימון':'חקירה שהחלה בנושא משני'} · <b>רמזים:</b> {game.hintCount}{game.hintCount>0&&<> (הפחתה של {Math.min(10,game.hintCount*5)} נקודות מעצמאות)</>}</p>
+          <ol className="debrief-list">{debrief(game).map(({step,verdict})=>{const text=scenario.debrief[step];return <li className={`debrief-item is-${verdict}`} key={step}>
+            <div className="debrief-head"><h3>{text.title}</h3><span className="verdict">{VERDICT_LABEL[verdict]}</span></div>
+            <p><b>בחרת:</b> {debriefChoice(step,game,path,secondId)}</p>
+            {verdict!=='match'&&<p><b>ההכרעה המועדפת:</b> {typeof text.preferred==='string'?text.preferred:text.preferred[path==='general'?'decoy':path]}</p>}
+            <p className="debrief-why">{text.why}</p>
+          </li>;})}</ol>
+        </div>
         <div className="share-panel"><h2>לשתף את האתגר?</h2><p>אפשר לפרסם את פרופיל המשחק בלי לחשוף את התשובה המקצועית, ולהזמין חברים לנסות.</p><div className="share-buttons"><button className="primary-button" onClick={share}><Share2 size={18}/> שיתוף / העתקת תוצאה</button><button className="outline-button" onClick={reset}><RefreshCcw size={17}/> לשחק שוב</button>{config.recruitmentUrl&&<a className="outline-button" href={config.recruitmentUrl} target="_blank" rel="noopener noreferrer">למשרות הפתוחות <ChevronLeft size={16}/></a>}</div>{shareStatus&&<p className="status-msg" role="status">{shareStatus}</p>}</div>
       </section>}
 

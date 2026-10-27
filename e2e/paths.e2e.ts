@@ -66,6 +66,9 @@ async function finishFromSecond(page: Page, take: string) {
   await page.getByRole('button', {name: 'לחשיפת התוצאה'}).click();
 
   await expect(page.getByText('מתוך 100')).toBeVisible();
+  // The debrief explains all eight decisions, only now that the game is over.
+  await expect(page.getByRole('heading', {name: 'תחקיר ההחלטות שלך'})).toBeVisible();
+  await expect(page.locator('.debrief-item')).toHaveCount(8);
   await expectNoHorizontalScroll(page);
   return Number(await page.locator('.score-circle strong').textContent());
 }
@@ -91,6 +94,8 @@ test('advanced path: both distractors shown, preferred answer reaches the shared
   await expect(page.getByText('מוקד הסיכון הוא כעת הרווחיות והמודל העסקי')).toBeVisible();
   const total = await finishFromSecond(page, 'אני משאיר את הערכת הסיכון המרכזית, עם הסתייגויות');
   expect(total).toBe(94);
+  await expect(page.locator('.debrief-item.is-match')).toHaveCount(8);
+  await expect(page.getByText('ההכרעה המועדפת:')).toHaveCount(0);
 });
 
 test('advanced path: "risk is managed" returns to data selection', async ({page}) => {
@@ -128,6 +133,12 @@ test('decoy path: manager offers all four options, "no further inquiry" skips th
   await page.getByRole('button', {name: 'למסמך הבא'}).click();
   await expect(page.getByRole('heading', {name: 'סיום החקירה'})).toBeVisible();
   await finishFromSecond(page, 'יש לבחון את התמונה המשולבת בלי לקבוע מראש כשל');
+  // A decoy opening and a skipped inquiry are flagged, with the preferred move spelled out.
+  const opening = page.locator('.debrief-item').first();
+  await expect(opening.locator('.verdict')).toHaveText('שונה מההכרעה המועדפת');
+  await expect(opening).toContainText('בחרת: תשואה להון');
+  await expect(opening).toContainText('ההכרעה המועדפת: מדד אשראי לצד מדד מימון');
+  await expect(page.locator('.debrief-item').nth(1)).toContainText('בחרת: לא נדרשת חקירה נוספת');
 });
 
 test('data table: tapping anywhere on a row selects it; each value shows its year on phones', async ({page}, testInfo) => {

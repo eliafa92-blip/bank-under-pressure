@@ -24,3 +24,18 @@ h1[tabindex="-1"]:focus{outline:none}
 .metrics-table .check-col{grid-column:4;grid-row:1/3;width:auto;display:grid;place-items:center}
 .row-check{width:44px;height:44px;border-radius:10px}
 }
+
+/* Post-game debrief */
+.debrief-list{list-style:none;margin:16px 0 0;padding:0;display:grid;gap:12px}
+.debrief-item{border:1px solid #e2e8f0;border-inline-start:4px solid #9fb3c8;border-radius:12px;padding:14px 16px;background:#fbfdff}
+.debrief-item.is-match{border-inline-start-color:#2f855a}
+.debrief-item.is-partial{border-inline-start-color:#c08a1e}
+.debrief-item.is-miss{border-inline-start-color:#c0392b}
+.debrief-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 10px;margin-bottom:8px}
+.debrief-head h3{margin:0;font-size:1rem}
+.verdict{font-size:.78rem;font-weight:700;padding:3px 10px;border-radius:999px;background:#edf2f7;color:#38516b}
+.is-match .verdict{background:#e6f4ea;color:#22643f}
+.is-partial .verdict{background:#fdf3dc;color:#7a5410}
+.is-miss .verdict{background:#fbe9e7;color:#9b2c20}
+.debrief-item p{margin:0 0 6px;font-size:.92rem;line-height:1.6}
+.debrief-why{color:#4a6078;margin-top:8px!important;padding-top:8px;border-top:1px dashed #dbe4ee}

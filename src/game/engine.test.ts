@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { firstDocId, initialState, pathForSignals, recognizedBoth, rootCards, scoreGame, secondDocId, validSavedState, withSignals } from './engine';
+import { debrief, firstDocId, initialState, pathForSignals, recognizedBoth, rootCards, scoreGame, secondDocId, validSavedState, withSignals } from './engine';
 import scenario from '../content/scenario.json';
 
 const s = initialState();
@@ -118,5 +118,24 @@ describe('persistence validation', () => {
     expect(validSavedState({...base, evidence:['nope']})).toBeNull();
     expect(validSavedState({...base, finalChoice:'panic'})).toBeNull();
     expect(validSavedState({...base, startedAt:null})).toBeNull();
+  });
+});
+
+describe('post-game debrief', () => {
+  const verdicts = (x: Parameters<typeof debrief>[0]) => Object.fromEntries(debrief(x).map(d => [d.step, d.verdict]));
+  it('marks the preferred advanced game as matching on every step', () => {
+    const best = {...s, selectedSignals:['loans','retail'], secondTake:'balanced' as const, selectedRoots:['credit_growth','funding_shift','growth_gap'],
+      causalChoice:'balanced' as const, cfoChoice:'balanced' as const, secondaryChoice:'sector' as const, finalChoice:'inquiry' as const};
+    expect(Object.values(verdicts(best)).every(v => v === 'match')).toBe(true);
+  });
+  it('grades partial and missed decisions', () => {
+    const v = verdicts({...s, selectedSignals:['loans'], evidence:['deposit_gap','funding_rates'], secondTake:'resolved',
+      selectedRoots:['credit_growth','sector'], cfoChoice:'dismiss', secondaryChoice:'none', finalChoice:'monitor'});
+    expect(v).toEqual({signals:'partial', first:'partial', second:'miss', roots:'partial', causal:'miss', cfo:'partial', secondary:'miss', final:'partial'});
+  });
+  it('treats backing off the advanced call and an unredirected decoy as misses', () => {
+    expect(verdicts({...s, selectedSignals:['loans','bonds'], advancedReselected:true}).first).toBe('miss');
+    expect(verdicts({...s, selectedSignals:['roe'], recoveryChoice:'deepen'})).toMatchObject({signals:'miss', first:'miss'});
+    expect(verdicts({...s, selectedSignals:['roe'], recoveryChoice:'funding'}).first).toBe('partial');
   });
 });
