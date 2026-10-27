@@ -1,0 +1,11 @@
+{
+  "recruitmentUrl": "",
+  "organizationUrl": "",
+  "publicSiteUrl": "",
+  "enableAnalytics": false,
+  "targetDurationMinutes": 15,
+  "maxInitialSignals": 3,
+  "maxEvidence": 2,
+  "maxHints": 2,
+  "hintPenalty": 5
+}
