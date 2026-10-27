@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { firstDocId, initialState, pathForSignals, recognizedBoth, rootCards, scoreGame, secondDocId, validSavedState, withSignals } from './engine';
+import scenario from '../content/scenario.json';
 
 const s = initialState();
 describe('game routes', () => {
@@ -57,6 +58,15 @@ describe('fair scoring', () => {
     const funding={...s,selectedSignals:['retail']};
     expect(scoreGame({...funding,evidence:['credit_growth','credit_acceleration']}).independence).toBe(15);
     expect(scoreGame({...funding,evidence:['capital_buffers']}).independence).toBe(2);
+  });
+  it('offers funding pricing on the credit board as non-key opposite-domain evidence', () => {
+    const credit={...s,selectedSignals:['loans']};
+    expect(scenario.documents.credit.evidenceIds).toContain('funding_rates');
+    expect(scenario.documents.credit.keyEvidenceIds).not.toContain('funding_rates');
+    // It still reveals the funding side, so the advanced document opens...
+    expect(secondDocId({...credit,evidence:['funding_rates']})).toBe('advanced');
+    // ...but taking it instead of a key item costs the usual 3 points.
+    expect(scoreGame({...credit,evidence:['deposit_gap','funding_rates']}).independence).toBe(5);
   });
   it('does not penalize investigation of decoys', () => {
     const x={...s,selectedSignals:['loans','retail']};
