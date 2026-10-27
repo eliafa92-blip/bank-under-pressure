@@ -3,3 +3,14 @@ dist
 .env
 .DS_Store
 coverage
+.env.*
+!.env.example
+venv/
+.venv/
+*.pem
+*.key
+*.p12
+*.log
+.claude/settings.local.json
+.vscode/
+.idea/
