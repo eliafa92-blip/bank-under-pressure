@@ -100,5 +100,13 @@ describe('persistence validation', () => {
     expect(validSavedState({...s, selectedSignals:['a','b','c','d']})).toBeNull();
     expect(validSavedState({...s, hintCount:3})).toBeNull();
     expect(validSavedState(s)?.version).toBe(8);
+  });  it('rejects unknown ids, choice values and a started stage without a start time', () => {
+    const base = {...initialState(), stage:'analysis' as const, startedAt:Date.now(), selectedSignals:['loans']};
+    expect(validSavedState(base)?.stage).toBe('analysis');
+    expect(validSavedState({...base, selectedSignals:['nope']})).toBeNull();
+    expect(validSavedState({...base, selectedRoots:['nope']})).toBeNull();
+    expect(validSavedState({...base, evidence:['nope']})).toBeNull();
+    expect(validSavedState({...base, finalChoice:'panic'})).toBeNull();
+    expect(validSavedState({...base, startedAt:null})).toBeNull();
   });
 });

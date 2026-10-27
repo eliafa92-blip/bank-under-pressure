@@ -139,6 +139,17 @@ export function validSavedState(raw:unknown): GameState | null {
   if (x.selectedSignals.length > 3 || x.evidence.length > 2) return null;
   if (typeof x.hintCount !== 'number' || x.hintCount < 0 || x.hintCount > 2) return null;
   if (!x.selectedSignals.every(v => typeof v === 'string') || !x.evidence.every(v => typeof v === 'string')) return null;
+  // Stored choices must be known values; anything else would corrupt scoring.
+  const metricIds = new Set(scenario.metrics.map(m => m.id));
+  const rootIds = new Set(rootCards.map(c => c.id));
+  if (!x.selectedSignals.every(v => metricIds.has(v)) || !x.evidence.every(v => evidenceIndex.has(v))) return null;
+  if (!x.selectedRoots.every(v => typeof v === 'string' && rootIds.has(v))) return null;
+  const oneOf = (v: unknown, allowed: readonly string[]) => v === null || v === undefined || allowed.includes(v as string);
+  if (!oneOf(x.recoveryChoice, ['credit','funding','deepen','none']) || !oneOf(x.secondTake, ['balanced','resolved','profit','crisis']) ||
+    !oneOf(x.causalChoice, ['balanced','underwriting','lcr','bonds']) || !oneOf(x.cfoChoice, ['balanced','dismiss','breach','credit']) ||
+    !oneOf(x.secondaryChoice, ['sector','margin','none','everything']) || !oneOf(x.finalChoice, ['monitor','inquiry','remediation','emergency'])) return null;
+  if (x.startedAt !== null && x.startedAt !== undefined && typeof x.startedAt !== 'number') return null;
+  if (x.stage !== 'intro' && typeof x.startedAt !== 'number') return null;
   return {...base, ...x};
 }
 

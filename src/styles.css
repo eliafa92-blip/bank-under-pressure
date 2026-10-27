@@ -2,3 +2,8 @@
 .hero-card h1[dir=ltr]{font-size:clamp(1.9rem,6vw,4rem);letter-spacing:.02em;margin:0 0 10px}.hero-card .hero-subtitle{color:#86c4ff;font-size:clamp(1.15rem,2.6vw,1.6rem);font-weight:700;margin:0 0 24px}
 .actions .primary-button{margin-inline-start:auto}
 .timer b{font-variant-numeric:tabular-nums}.timer-low{color:#b0661b;font-weight:800}.timer-over{color:#b23b3b;font-weight:800}
+
+/* Keyboard focus */
+:focus-visible{outline:3px solid #1f6feb;outline-offset:2px}
+h1[tabindex="-1"]:focus{outline:none}
+.choice-card:has(input:focus-visible),.root-card:has(input:focus-visible){outline:3px solid #1f6feb;outline-offset:2px}

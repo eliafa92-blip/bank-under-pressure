@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, BookOpen, BrainCircuit, Check, ChevronLeft, ClipboardCopy, Compass, FileText, Flag, HelpCircle, Lightbulb, RefreshCcw, Scale, Share2, ShieldCheck, Target, TrendingUp } from 'lucide-react';
 import scenario from './content/scenario.json';
 import config from './content/config.json';
@@ -94,13 +94,19 @@ function App() {
   const [showEvidence, setShowEvidence] = useState(false);
   const [advancedAnswer, setAdvancedAnswer] = useState<'stay'|'reselect'|null>(null);
   const [now, setNow] = useState(()=>Date.now());
+  const firstStageRender = useRef(true);
   const timerRunning = game.startedAt!==null && game.stage!=='intro' && game.stage!=='results';
   useEffect(()=>{if(!timerRunning)return;const id=window.setInterval(()=>setNow(Date.now()),1000);return ()=>window.clearInterval(id);},[timerRunning]);
   const remainingMs = game.startedAt===null ? TIME_LIMIT_MS : Math.max(0, TIME_LIMIT_MS-(now-game.startedAt));
   useEffect(()=>{if(timerRunning&&remainingMs===0&&!game.overtime)setGame(s=>({...s,overtime:true}));},[timerRunning,remainingMs,game.overtime]);
+  const timeNotice=remainingMs===0?'הזמן הסתיים. אפשר להמשיך במשחק.':remainingMs<=5*60000?'נותרו פחות מחמש דקות.':'';
   const clock=`${String(Math.floor(remainingMs/60000)).padStart(2,'0')}:${String(Math.floor(remainingMs/1000)%60).padStart(2,'0')}`;
   useEffect(()=>{try {localStorage.setItem(STORE_KEY,JSON.stringify(game));} catch {/* private mode */}},[game]);
-  useEffect(()=>{window.scrollTo({top:0,behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});},[game.stage]);
+  useEffect(()=>{window.scrollTo({top:0,behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
+    // Move focus to the new stage's heading so screen readers announce the change.
+    if(!firstStageRender.current){const h=document.querySelector<HTMLElement>('main h1');if(h){h.tabIndex=-1;h.focus({preventScroll:true});}}
+    firstStageRender.current=false;
+  },[game.stage]);
   useEffect(()=>{
     const onKey=(e:KeyboardEvent)=>{if(e.key==='Escape'){setConfirmReset(false);setShowEvidence(false);}};
     window.addEventListener('keydown',onKey);return ()=>window.removeEventListener('keydown',onKey);
@@ -135,7 +141,8 @@ function App() {
     </div></header>
     <main className="container">
       {game.stage!=='intro' && game.stage!=='results' && <div className="progress-wrap">
-        <div className="progress-meta"><span>שלב {stagePosition} מתוך 5</span><strong>{STEP_NAMES[game.stage]}</strong><span className={`timer ${remainingMs===0?'timer-over':remainingMs<120000?'timer-low':''}`} role="timer" aria-label="זמן שנותר">{remainingMs===0?'הזמן הסתיים — אפשר להמשיך':<>זמן שנותר: <b dir="ltr">{clock}</b></>}</span></div>
+        <div className="progress-meta"><span>שלב {stagePosition} מתוך 5</span><strong>{STEP_NAMES[game.stage]}</strong><span className={`timer ${remainingMs===0?'timer-over':remainingMs<120000?'timer-low':''}`} role="timer" aria-label="זמן שנותר" aria-live="off">{remainingMs===0?'הזמן הסתיים — אפשר להמשיך':<>זמן שנותר: <b dir="ltr">{clock}</b></>}</span>
+        <span className="sr-only" aria-live="polite">{timeNotice}</span></div>
         <div className="progress" role="progressbar" aria-valuenow={Math.min(stagePosition,5)} aria-valuemin={0} aria-valuemax={5} aria-label="התקדמות המשחק"><span style={{width:`${Math.min(stagePosition,5)/5*100}%`}}/></div>
       </div>}
 
@@ -169,7 +176,7 @@ function App() {
         {path==='advanced' ? <div className="manager-card"><div className="manager-label"><ShieldCheck size={19}/> שאלה לפני המשך החקירה</div><blockquote>בהינתן המידע שמסרה ההנהלה, המשקף יחסי הון ונזילות נאותים, ובהינתן שהדירקטוריון אישר את התפתחות המאזן — האם הסיכון מנוהל בצורה נאותה?</blockquote>
           <ChoiceGroup label="האם הסיכון מנוהל" options={advancedCheckOptions} value={advancedAnswer} onChange={setAdvancedAnswer}/>
         </div> : <div className="panel"><div className="panel-heading"><h2><BookOpen size={18}/> לוח הראיות</h2><span className="counter">{game.evidence.length} / {config.maxEvidence}</span></div><p className="muted">איזה מידע מתוך המסמך היית שומר להמשך? אין חובה לבחור.</p>
-          <div className="evidence-grid">{evidenceItems.map(e=><button className={`evidence-chip ${game.evidence.includes(e.id)?'active':''}`} key={e.id} onClick={()=>chosenEvidence(e.id)} disabled={game.evidence.length>=config.maxEvidence&&!game.evidence.includes(e.id)}><span className="box-check">{game.evidence.includes(e.id)&&<Check size={13}/>}</span>{e.text}</button>)}</div>
+          <div className="evidence-grid">{evidenceItems.map(e=><button className={`evidence-chip ${game.evidence.includes(e.id)?'active':''}`} key={e.id} aria-pressed={game.evidence.includes(e.id)} onClick={()=>chosenEvidence(e.id)} disabled={game.evidence.length>=config.maxEvidence&&!game.evidence.includes(e.id)}><span className="box-check">{game.evidence.includes(e.id)&&<Check size={13}/>}</span>{e.text}</button>)}</div>
         </div>}
         {(path==='decoy'||path==='general') && <div className="manager-card"><div className="manager-label"><ShieldCheck size={19}/> הודעה ממנהל האגף</div><blockquote>הממצא שבחרת בהחלט ראוי לבדיקה. אבל לפני שנקבע שהוא מוקד הסיכון המרכזי, חשוב לוודא שאיננו מפספסים שינוי רחב יותר במאזן. איזה תחום נוסף היית בוחן?</blockquote>
           <ChoiceGroup label="כיוון חקירה נוסף" options={recoveryOptions} value={game.recoveryChoice} onChange={v=>update({recoveryChoice:v})}/>
