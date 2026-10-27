@@ -7,3 +7,20 @@
 :focus-visible{outline:3px solid #1f6feb;outline-offset:2px}
 h1[tabindex="-1"]:focus{outline:none}
 .choice-card:has(input:focus-visible),.root-card:has(input:focus-visible){outline:3px solid #1f6feb;outline-offset:2px}
+
+/* Data table as cards on phones: full metric name, year above each value, large tap target */
+.metrics-table tbody tr{cursor:pointer}
+@media(max-width:600px){
+.table-scroll{overflow:visible;border:0;border-radius:0}
+.metrics-table,.metrics-table tbody{display:block}
+.metrics-table thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.metrics-table tbody tr{display:grid;grid-template-columns:repeat(3,1fr) 52px;align-items:center;gap:6px 4px;margin:0 0 8px;padding:12px 12px 10px;border:1px solid #e2e8f0;border-radius:12px;background:white}
+.metrics-table tbody tr:last-child{margin-bottom:0}
+.metrics-table tbody tr.selected-row{background:#eff6ff;border-color:#2763ad;box-shadow:inset 0 0 0 1px #2763ad}
+.metrics-table tbody th,.metrics-table td{border:0;padding:0}
+.metrics-table tbody th{grid-column:1/4;grid-row:1;width:auto;font-size:.92rem;font-weight:600;line-height:1.4;text-align:right}
+.metrics-table td.numeric{grid-row:2;font-size:1rem;font-weight:600;color:#15243b}
+.metrics-table td.numeric::before{content:attr(data-year);display:block;margin-bottom:2px;font-size:.72rem;font-weight:500;color:#6b7c8f}
+.metrics-table .check-col{grid-column:4;grid-row:1/3;width:auto;display:grid;place-items:center}
+.row-check{width:44px;height:44px;border-radius:10px}
+}

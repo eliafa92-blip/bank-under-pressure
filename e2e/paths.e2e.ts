@@ -129,3 +129,20 @@ test('decoy path: manager offers all four options, "no further inquiry" skips th
   await expect(page.getByRole('heading', {name: 'סיום החקירה'})).toBeVisible();
   await finishFromSecond(page, 'יש לבחון את התמונה המשולבת בלי לקבוע מראש כשל');
 });
+
+test('data table: tapping anywhere on a row selects it; each value shows its year on phones', async ({page}, testInfo) => {
+  await start(page);
+  const row = page.locator('.metrics-table tbody tr').filter({hasText: metricLabel('loans')});
+  await row.locator('th').click();
+  await expect(page.getByText('נבחרו 1 / 3')).toBeVisible();
+  await expect(page.getByRole('button', {name: `בטל בדיקה של ${metricLabel('loans')}`})).toHaveAttribute('aria-pressed', 'true');
+  // Nothing can be in the evidence drawer yet, so its button stays hidden on this screen.
+  await expect(page.locator('.evidence-fab')).toHaveCount(0);
+  if ((testInfo.project.use.viewport?.width ?? 0) <= 600) {
+    const year = await row.locator('td.numeric').first().evaluate(el => getComputedStyle(el, '::before').content);
+    expect(year).toBe(`"${scenario.columns[0]}"`);
+    const box = await row.getByRole('button').boundingBox();
+    expect(box!.width).toBeGreaterThanOrEqual(44);
+  }
+  await expectNoHorizontalScroll(page);
+});
